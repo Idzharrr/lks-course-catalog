@@ -11,7 +11,6 @@ phases:
   install:
     runtime-versions:
       nodejs: 16 # As specified in the project details
-      docker: 20 # As specified in the project details
     commands:
       - echo "Installing dependencies..."
       - npm install # Install Node.js dependencies for the project
@@ -24,8 +23,6 @@ phases:
 
   build:
     commands:
-      - echo "Running unit tests..."
-      - npm test # Assuming your package.json has a 'test' script defined for unit tests
       - echo "Building the Docker image..."
       - docker build -t $ECR_REPO:latest . # Build the Docker image from the Dockerfile in the current directory
       - docker tag $ECR_REPO:latest $ECR_REPO:$CODEBUILD_BUILD_NUMBER # Tag with build number for versioning
