@@ -43,4 +43,5 @@ artifacts:
   files:
     - imagedefinitions.json
     - Dockerrun.aws.json
+    - Dockerfile
   discard-paths: no
