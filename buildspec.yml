@@ -1,0 +1,50 @@
+version: 0.2
+
+env:
+  variables:
+    # Replace YOUR_ACCOUNT_ID with your actual AWS Account ID
+    ECR_REPO: 708288425331.dkr.ecr.us-east-1.amazonaws.com/lks-catalog-image
+    ECR_REGION: us-east-1
+    CONTAINER_NAME: lks-catalog-container # This name should match the container name in your ECS Task Definition later
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 16 # As specified in the project details
+      docker: 20 # As specified in the project details
+    commands:
+      - echo "Installing dependencies..."
+      - npm install # Install Node.js dependencies for the project
+
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      # This command gets an authentication token and logs Docker into your ECR registry
+      - aws ecr get-login-password --region $ECR_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+  build:
+    commands:
+      - echo "Running unit tests..."
+      - npm test # Assuming your package.json has a 'test' script defined for unit tests
+      - echo "Building the Docker image..."
+      - docker build -t $ECR_REPO:latest . # Build the Docker image from the Dockerfile in the current directory
+      - docker tag $ECR_REPO:latest $ECR_REPO:$CODEBUILD_BUILD_NUMBER # Tag with build number for versioning
+
+  post_build:
+    commands:
+      - echo "Pushing the Docker images to ECR..."
+      - docker push $ECR_REPO:latest # Push the 'latest' tag
+      - docker push $ECR_REPO:$CODEBUILD_BUILD_NUMBER # Push the versioned tag
+      # This file is crucial for ECS deployment later, it tells ECS which image to use
+      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $ECR_REPO:latest > imagedefinitions.json
+      - echo "Build complete."
+
+reports:
+  test-report:
+    files:
+      - 'report/test-result.xml' # Adjust this path if your test results are in a different location
+    file-format: JUNITXML
+
+artifacts:
+  files:
+    - imagedefinitions.json # This artifact will be passed to the next stage (e.g., ECS deployment)
